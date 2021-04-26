@@ -210,8 +210,10 @@ const smStyleManager = class SystemMonitor_smStyleManager {
         this._diskunits = _('MiB/s');
         this._netunits_kbytes = _('KiB/s');
         this._netunits_mbytes = _('MiB/s');
+        this._netunits_gbytes = _('GiB/s');
         this._netunits_kbits = _('kbit/s');
         this._netunits_mbits = _('Mbit/s');
+        this._netunits_gbits = _('Gbit/s');
         this._pie_width = 300;
         this._pie_height = 300;
         this._pie_fontsize = 14;
@@ -227,8 +229,10 @@ const smStyleManager = class SystemMonitor_smStyleManager {
             this._diskunits = _('MB');
             this._netunits_kbytes = _('kB');
             this._netunits_mbytes = _('MB');
+            this._netunits_gbytes = _('GB');
             this._netunits_kbits = 'kb';
             this._netunits_mbits = 'Mb';
+            this._netunits_gbits = 'Gb';
             this._pie_width *= 4 / 5;
             this._pie_height *= 4 / 5;
             this._pie_fontsize = 12;
@@ -260,11 +264,17 @@ const smStyleManager = class SystemMonitor_smStyleManager {
     netunits_mbytes() {
         return this._netunits_mbytes;
     }
+    netunits_gbytes() {
+        return this._netunits_gbytes;
+    }
     netunits_kbits() {
         return this._netunits_kbits;
     }
     netunits_mbits() {
         return this._netunits_mbits;
+    }
+    netunits_gbits() {
+        return this._netunits_gbits;
     }
     pie_width() {
         return this._pie_width;
@@ -905,8 +915,10 @@ const ElementBase = class SystemMonitor_ElementBase extends TipBox {
         this.interval = l_limit(Schema.get_int(this.elt + '-refresh-time'));
         this.timeout = Mainloop.timeout_add(
             this.interval,
-            this.update.bind(this)
+            this.update.bind(this),
+            GLib.PRIORITY_DEFAULT_IDLE
         );
+
         Schema.connect(
             'changed::' + this.elt + '-refresh-time',
             (schema, key) => {
@@ -914,7 +926,7 @@ const ElementBase = class SystemMonitor_ElementBase extends TipBox {
                 this.timeout = null;
                 this.interval = l_limit(Schema.get_int(key));
                 this.timeout = Mainloop.timeout_add(
-                    this.interval, this.update.bind(this));
+                    this.interval, this.update.bind(this), GLib.PRIORITY_DEFAULT_IDLE);
             });
         Schema.connect('changed::' + this.elt + '-graph-width',
             this.chart.resize.bind(this.chart));
@@ -926,7 +938,7 @@ const ElementBase = class SystemMonitor_ElementBase extends TipBox {
                     this.timeout = null;
                     this.reset_style();
                     this.timeout = Mainloop.timeout_add(
-                        this.interval, this.update.bind(this));
+                        this.interval, this.update.bind(this), GLib.PRIORITY_DEFAULT_IDLE);
                 });
         }
 
@@ -1821,35 +1833,51 @@ const Net = class SystemMonitor_Net extends ElementBase {
             if (this.tip_vals[0] < 1000) {
                 this.text_items[2].text = Style.netunits_kbits();
                 this.menu_items[1].text = this.tip_unit_labels[0].text = _('kbit/s');
-            } else {
+            } else if (this.tip_vals[0] < 1000000) {
                 this.text_items[2].text = Style.netunits_mbits();
                 this.menu_items[1].text = this.tip_unit_labels[0].text = _('Mbit/s');
                 this.tip_vals[0] = (this.tip_vals[0] / 1000).toPrecision(3);
+            } else {
+                this.text_items[2].text = Style.netunits_gbits();
+                this.menu_items[1].text = this.tip_unit_labels[0].text = _('Gbit/s');
+                this.tip_vals[0] = (this.tip_vals[0] / 1000000).toPrecision(3);
             }
             if (this.tip_vals[2] < 1000) {
                 this.text_items[5].text = Style.netunits_kbits();
                 this.menu_items[4].text = this.tip_unit_labels[2].text = _('kbit/s');
-            } else {
+            } else if (this.tip_vals[2] < 1000000) {
                 this.text_items[5].text = Style.netunits_mbits();
                 this.menu_items[4].text = this.tip_unit_labels[2].text = _('Mbit/s');
                 this.tip_vals[2] = (this.tip_vals[2] / 1000).toPrecision(3);
+            } else {
+                this.text_items[5].text = Style.netunits_gbits();
+                this.menu_items[4].text = this.tip_unit_labels[2].text = _('Gbit/s');
+                this.tip_vals[2] = (this.tip_vals[2] / 1000000).toPrecision(3);
             }
         } else {
             if (this.tip_vals[0] < 1024) {
                 this.text_items[2].text = Style.netunits_kbytes();
                 this.menu_items[1].text = this.tip_unit_labels[0].text = _('KiB/s');
-            } else {
+            } else if (this.tip_vals[0] < 1048576) {
                 this.text_items[2].text = Style.netunits_mbytes();
                 this.menu_items[1].text = this.tip_unit_labels[0].text = _('MiB/s');
                 this.tip_vals[0] = (this.tip_vals[0] / 1024).toPrecision(3);
+            } else {
+                this.text_items[2].text = Style.netunits_gbytes();
+                this.menu_items[1].text = this.tip_unit_labels[0].text = _('GiB/s');
+                this.tip_vals[0] = (this.tip_vals[0] / 1048576).toPrecision(3);
             }
             if (this.tip_vals[2] < 1024) {
                 this.text_items[5].text = Style.netunits_kbytes();
                 this.menu_items[4].text = this.tip_unit_labels[2].text = _('KiB/s');
-            } else {
+            } else if (this.tip_vals[2] < 1048576) {
                 this.text_items[5].text = Style.netunits_mbytes();
                 this.menu_items[4].text = this.tip_unit_labels[2].text = _('MiB/s');
                 this.tip_vals[2] = (this.tip_vals[2] / 1024).toPrecision(3);
+            } else {
+                this.text_items[5].text = Style.netunits_gbytes();
+                this.menu_items[4].text = this.tip_unit_labels[2].text = _('GiB/s');
+                this.tip_vals[2] = (this.tip_vals[2] / 1048576).toPrecision(3);
             }
         }
 
@@ -2193,11 +2221,18 @@ const Gpu = class SystemMonitor_Gpu extends ElementBase {
             global.logError('gpu_usage.sh invocation failed');
         }
     }
+    _sanitizeUsageValue(val) {
+        val = parseInt(val);
+        if (isNaN(val)) {
+            val = 0
+        }
+        return val;
+    }
     _readTemperature(procOutput) {
         let usage = procOutput.split('\n');
-        let memTotal = parseInt(usage[0]);
-        let memUsed = parseInt(usage[1]);
-        this.percentage = parseInt(usage[2]);
+        let memTotal = this._sanitizeUsageValue(usage[0]);
+        let memUsed = this._sanitizeUsageValue(usage[1]);
+        this.percentage = this._sanitizeUsageValue(usage[2]);
         if (typeof this.useGiB === 'undefined') {
             this._unit(memTotal);
             this._update_unit();
